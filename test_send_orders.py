@@ -1,9 +1,7 @@
 import asyncio
 import json
 
-# import requests
 import uuid
-import time
 
 import aiohttp
 
@@ -31,11 +29,8 @@ async def send_order(i):
     print(f"  Response: {response_json}")
 
 
-# Главная асинхронная функция.
 async def main():
-    # Создать список задач для асинхронного выполнения.
     tasks = [asyncio.ensure_future(send_order(i)) for i in range(10)]
-    # Подождать, пока выполнятся все задачи.
     await asyncio.wait(tasks)
 
 

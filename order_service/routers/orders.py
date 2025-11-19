@@ -16,7 +16,6 @@ order_router = APIRouter(
 producer_conf = {
     "bootstrap.servers": settings.KAFKA_BOOTSTRAP_SERVERS,
     "client.id": settings.PRODUCER_CLIENT_ID,
-    # acks=all для большей надежности (если kafka настроен)
     "acks": "all",
 }
 producer = Producer(producer_conf)
@@ -39,7 +38,6 @@ async def create_order(request: Request):
                 detail=f"Invalid JSON: {str(e)}",
             )
 
-        # 2. Проверяем обязательные поля
         required_fields = ["order_id", "user_id", "item", "quantity"]
 
         missing = [field for field in required_fields if field not in payload]
@@ -49,11 +47,9 @@ async def create_order(request: Request):
                 detail=f"Missing required fields: {', '.join(missing)}",
             )
 
-        # 3. Готовим данные для Kafka
         key = str(payload["order_id"])
         value = json.dumps(payload).encode("utf-8")
 
-        # 4. Публикуем
         producer.produce(
             topic=settings.ORDERS_TOPIC,
             key=key,

@@ -47,7 +47,9 @@ def process_order(order: dict) -> dict:
 
 def main():
     consumer.subscribe([settings.ORDERS_TOPIC])
-    processing_logger.info("Processing service started, subscribed to %s", settings.ORDERS_TOPIC)
+    processing_logger.info(
+        "Processing service started, subscribed to %s", settings.ORDERS_TOPIC
+    )
 
     try:
         while running:
@@ -64,16 +66,19 @@ def main():
                 payload = json.loads(msg.value().decode("utf-8"))
                 processing_logger.info("Received order: %s", payload)
                 result = process_order(payload)
-                # Отправляем в notifications
+
                 producer.produce(
                     topic=settings.NOTIFICATIONS_TOPIC,
                     key=result["order_id"],
                     value=json.dumps(result).encode("utf-8"),
                 )
                 producer.flush(timeout=5)
-                # Коммитим offset
+
                 consumer.commit(message=msg, asynchronous=False)
-                processing_logger.info("Processed and published result: %s", result)
+                processing_logger.info(
+                    "Processed and published result: %s",
+                    result,
+                )
             except Exception:
                 processing_logger.exception("Processing error")
     finally:
