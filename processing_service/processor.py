@@ -37,9 +37,7 @@ signal.signal(signal.SIGTERM, handle_sigterm)
 
 
 def process_order(order: dict) -> dict:
-    # Упрощённая логика: случайное подтверждение/отклонение
     status = "confirmed" if random.random() > 0.2 else "rejected"
-    # Можно добавить дополнительные проверки (наличие склада, валидация и т.д.)
     return {
         "order_id": order["order_id"],
         "status": status,

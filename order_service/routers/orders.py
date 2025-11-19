@@ -30,7 +30,6 @@ async def create_order(request: Request):
     Публикует JSON в Kafka.
     """
     try:
-        # 1. Получаем JSON как словарь
         try:
             payload: Dict[str, Any] = await request.json()
         except Exception as e:
