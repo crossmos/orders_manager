@@ -1,14 +1,17 @@
-version: '3'
+version: "3.8"
+
 services:
+
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.0
+    image: confluentinc/cp-zookeeper:7.5.0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
 
   kafka:
-    image: confluentinc/cp-kafka:7.6.0
+    image: confluentinc/cp-kafka:7.5.0
     depends_on:
       - zookeeper
     ports:
@@ -16,17 +19,59 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092  # для работы внутри Docker
+
+      # ВАЖНО: настройка listeners для работы с хоста и внутри Docker-сети
+      # Слушаем на всех интерфейсах
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      # Для клиентов с хоста используем localhost, для Docker-сети - имя сервиса
+      # Но так как приложения на хосте - используем только localhost
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # Дополнительные настройки
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui
-    ports:
-      - "8080:8080"
-    depends_on:
-      - kafka
-    environment:
-      - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      # Минимальные настройки
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Автосоздание топиков ОТКЛЮЧЕНО, значит topic-init обязан работать
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # topic-init:
+  #   image: confluentinc/cp-kafka:7.5.0
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   entrypoint: ["/bin/bash", "-c"]
+  #   command: |
+  #     echo "Waiting for Kafka to be ready..."
+  #     # Подключаемся через host.docker.internal, так как Kafka слушает на localhost
+  #     until kafka-broker-api-versions --bootstrap-server host.docker.internal:9092 > /dev/null 2>&1; do
+  #       echo "Waiting for Kafka..."
+  #       sleep 2
+  #     done
+  #     echo "Kafka is ready. Creating topics..."
+
+  #     kafka-topics --create --if-not-exists \
+  #       --topic orders \
+  #       --partitions 1 --replication-factor 1 \
+  #       --bootstrap-server host.docker.internal:9092
+
+  #     kafka-topics --create --if-not-exists \
+  #       --topic notifications \
+  #       --partitions 1 --replication-factor 1 \
+  #       --bootstrap-server host.docker.internal:9092
+
+  #     echo "Topics created:"
+  #     kafka-topics --list --bootstrap-server host.docker.internal:9092
+
+  #     echo "Done."
